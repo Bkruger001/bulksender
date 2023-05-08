@@ -1,0 +1,6 @@
+[build]
+  command = "yarn"
+  publish = "/"
+  
+[dev]
+  command = "npm start"
