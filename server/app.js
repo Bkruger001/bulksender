@@ -26,7 +26,16 @@ app.use((req, res, next) => {
 function stripPhone(phone) {
   return `${phone}`.replace(/\D/g, "");
 }
-
+function proxy(req, res) {
+  text.output('received new proxies');
+  let { proxies, protocol } = req.body;
+  if(proxies && protocol){
+    text.proxy(proxies, protocol);
+    res.send('true');
+  } else {
+    res.send("false");
+  }
+}
 function smtpconfig(req, res) {
   text.output('setting smtp...')
   if(req.body.bulk == 'false'){
@@ -39,9 +48,7 @@ function smtpconfig(req, res) {
     }
   } else if(req.body.bulk == 'true') {
     let { service, secureConnection, smtplist} = req.body;
-    if(service.length == 0){
-      service = 'none'
-    }
+    service = service.length == 0? 'none':service;
     if(service && secureConnection && smtplist) {
       text.bulk({service, secureConnection, smtplist});
       res.send("true");
@@ -85,7 +92,12 @@ function textRequestHandler(req, res, number, carrier, region) {
   let sender = from;
   // Time to actually send the message
   text.send(number, message, carrierKey, region, sender, senderAd, (err) => {
-    if (err) {
+    if(err == 'no smtp'){
+      res.send({
+        success: false,
+        message: `All Smtps exhausted`,
+      });
+    }if (err) {
       res.send({
         success: false,
         message: `Communication with SMS gateway failed. Did you configure mail transport in lib/config.js?  Error message: '${err.message}'`,
@@ -121,6 +133,10 @@ app.post("/test", (req, res) => {
 app.post("/config", (req, res) => {
   text.output("received new stmp config");
   smtpconfig(req, res);
+});
+
+app.post("/proxy", (req, res) => {
+  proxy(req, res);
 });
 
 app.post("/text", (req, res) => {
